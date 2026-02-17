@@ -1,16 +1,20 @@
 import { Bot } from 'grammy';
-import { addUser, addGroup } from '../lib/kv-store.js';
 
-// Inisialisasi bot
+// Check if BOT_TOKEN exists
+if (!process.env.BOT_TOKEN) {
+  console.error('BOT_TOKEN is not set!');
+}
+
+// Initialize bot
 const bot = new Bot(process.env.BOT_TOKEN);
 
-// Handler untuk semua pesan
+// Message handler
 bot.on('message', async (ctx) => {
   const chatId = ctx.chat.id;
   
   try {
     if (ctx.chat.type === 'private') {
-      // Simpan user ID
+      const { addUser } = await import('../lib/kv-store.js');
       await addUser(chatId);
       
       await ctx.reply(
@@ -20,7 +24,7 @@ bot.on('message', async (ctx) => {
         { parse_mode: 'Markdown' }
       );
     } else if (ctx.chat.type === 'group' || ctx.chat.type === 'supergroup') {
-      // Simpan grup ID
+      const { addGroup } = await import('../lib/kv-store.js');
       await addGroup(chatId);
       
       await ctx.reply(
@@ -30,19 +34,26 @@ bot.on('message', async (ctx) => {
       );
     }
   } catch (error) {
-    console.error('Error in message handler:', error);
-    // Jangan throw error, biar tidak crash
+    console.error('Message handler error:', error);
   }
 });
 
-// Webhook handler untuk Vercel
+// Vercel Serverless Handler
 export async function POST(req) {
   try {
+    console.log('Webhook received');
+    
     const body = await req.json();
-    await bot.handle(body);
+    console.log('Request body:', JSON.stringify(body).substring(0, 100));
+    
+    // Handle the update
+    await bot.handleUpdate(body);
+    
+    console.log('Webhook processed successfully');
     return new Response('OK', { status: 200 });
   } catch (error) {
     console.error('Webhook error:', error);
+    console.error('Error stack:', error.stack);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
@@ -55,7 +66,8 @@ export async function GET() {
   return new Response(
     JSON.stringify({ 
       status: 'Bot is running! 🤖',
-      tokenSet: !!process.env.BOT_TOKEN 
+      tokenSet: !!process.env.BOT_TOKEN,
+      tokenLength: process.env.BOT_TOKEN?.length || 0
     }), 
     { 
       status: 200,
