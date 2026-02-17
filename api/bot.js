@@ -1,12 +1,17 @@
 import { Bot } from 'grammy';
 
-// Check if BOT_TOKEN exists
-if (!process.env.BOT_TOKEN) {
-  console.error('BOT_TOKEN is not set!');
-}
-
-// Initialize bot
-const bot = new Bot(process.env.BOT_TOKEN);
+// Initialize bot with botInfo for serverless
+const bot = new Bot(process.env.BOT_TOKEN, {
+  botInfo: {
+    id: 0,
+    is_bot: true,
+    first_name: 'Bot Saham',
+    username: 'bcbywill_bot',
+    can_join_groups: true,
+    can_read_all_group_messages: false,
+    supports_inline_queries: false,
+  },
+});
 
 // Message handler
 bot.on('message', async (ctx) => {
@@ -41,19 +46,11 @@ bot.on('message', async (ctx) => {
 // Vercel Serverless Handler
 export async function POST(req) {
   try {
-    console.log('Webhook received');
-    
     const body = await req.json();
-    console.log('Request body:', JSON.stringify(body).substring(0, 100));
-    
-    // Handle the update
     await bot.handleUpdate(body);
-    
-    console.log('Webhook processed successfully');
     return new Response('OK', { status: 200 });
   } catch (error) {
     console.error('Webhook error:', error);
-    console.error('Error stack:', error.stack);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
@@ -66,8 +63,7 @@ export async function GET() {
   return new Response(
     JSON.stringify({ 
       status: 'Bot is running! 🤖',
-      tokenSet: !!process.env.BOT_TOKEN,
-      tokenLength: process.env.BOT_TOKEN?.length || 0
+      tokenSet: !!process.env.BOT_TOKEN 
     }), 
     { 
       status: 200,
