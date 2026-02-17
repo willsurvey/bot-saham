@@ -1,16 +1,16 @@
 import { Bot } from 'grammy';
+import { addUser, addGroup } from '../lib/kv-store.js';
 
-// Inisialisasi bot dengan token dari environment variable
+// Inisialisasi bot
 const bot = new Bot(process.env.BOT_TOKEN);
 
-// Handler untuk pesan (auto-save user & grup)
+// Handler untuk semua pesan
 bot.on('message', async (ctx) => {
+  const chatId = ctx.chat.id;
+  
   try {
-    const chatId = ctx.chat.id;
-    
     if (ctx.chat.type === 'private') {
-      // Simpan user ID ke database
-      const { addUser } = await import('../lib/kv-store.js');
+      // Simpan user ID
       await addUser(chatId);
       
       await ctx.reply(
@@ -20,8 +20,7 @@ bot.on('message', async (ctx) => {
         { parse_mode: 'Markdown' }
       );
     } else if (ctx.chat.type === 'group' || ctx.chat.type === 'supergroup') {
-      // Simpan grup ID ke database
-      const { addGroup } = await import('../lib/kv-store.js');
+      // Simpan grup ID
       await addGroup(chatId);
       
       await ctx.reply(
@@ -31,31 +30,19 @@ bot.on('message', async (ctx) => {
       );
     }
   } catch (error) {
-    console.error('Error handling message:', error);
+    console.error('Error in message handler:', error);
+    // Jangan throw error, biar tidak crash
   }
 });
 
-// Export handler untuk Vercel Serverless
+// Webhook handler untuk Vercel
 export async function POST(req) {
   try {
-    // Cek apakah BOT_TOKEN ada
-    if (!process.env.BOT_TOKEN) {
-      console.error('BOT_TOKEN tidak ditemukan!');
-      return new Response(
-        JSON.stringify({ error: 'BOT_TOKEN tidak ditemukan' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Parse body request dari Telegram
     const body = await req.json();
-    
-    // Process update dari Telegram
     await bot.handle(body);
-    
     return new Response('OK', { status: 200 });
   } catch (error) {
-    console.error('Error in bot webhook:', error);
+    console.error('Webhook error:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
@@ -63,7 +50,7 @@ export async function POST(req) {
   }
 }
 
-// Handler untuk test GET request
+// Test endpoint
 export async function GET() {
   return new Response(
     JSON.stringify({ 
