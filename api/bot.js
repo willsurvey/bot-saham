@@ -1,6 +1,6 @@
 import { Bot } from 'grammy';
 
-// 🆕 Import library baru untuk fitur bidikan
+// Import library baru untuk fitur bidikan
 import { fetchScreeningData } from '../lib/api-fetcher.js';
 import { formatBidikanMessage, formatErrorMessage } from '../lib/message-mapper.js';
 
@@ -18,6 +18,26 @@ const bot = new Bot(process.env.BOT_TOKEN, {
     can_read_all_group_messages: false,
     supports_inline_queries: false,
   },
+});
+
+// ✅ HANDLER COMMAND (DULUAN - sebelum message handler)
+bot.command('bidikan', async (ctx) => {
+  try {
+    await ctx.reply('⏳ Mengambil data screening...');
+
+    const result = await fetchScreeningData();
+
+    if (!result.success) {
+      await ctx.reply(formatErrorMessage(), { parse_mode: 'Markdown' });
+      return;
+    }
+
+    const message = formatBidikanMessage(result.data);
+    await ctx.reply(message, { parse_mode: 'Markdown' });
+  } catch (error) {
+    console.error('/bidikan error:', error);
+    await ctx.reply(formatErrorMessage(), { parse_mode: 'Markdown' });
+  }
 });
 
 // Message handler (untuk auto-save user/group saat chat)
@@ -45,26 +65,6 @@ bot.on('message', async (ctx) => {
     }
   } catch (error) {
     console.error('Message handler error:', error);
-  }
-});
-
-// 🆕 HANDLER BARU: Command /bidikan
-bot.command('bidikan', async (ctx) => {
-  try {
-    await ctx.reply('⏳ Mengambil data screening...');
-
-    const result = await fetchScreeningData();
-
-    if (!result.success) {
-      await ctx.reply(formatErrorMessage(), { parse_mode: 'Markdown' });
-      return;
-    }
-
-    const message = formatBidikanMessage(result.data);
-    await ctx.reply(message, { parse_mode: 'Markdown' });
-  } catch (error) {
-    console.error('/bidikan error:', error);
-    await ctx.reply(formatErrorMessage(), { parse_mode: 'Markdown' });
   }
 });
 
