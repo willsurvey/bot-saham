@@ -1,5 +1,12 @@
 import { Bot } from 'grammy';
 
+// 🆕 Import library baru untuk fitur bidikan
+import { fetchScreeningData } from '../lib/api-fetcher.js';
+import { formatBidikanMessage, formatErrorMessage } from '../lib/message-mapper.js';
+
+// Import untuk user/group registration
+import { addUser, addGroup } from '../lib/kv-store.js';
+
 // Initialize bot with botInfo for serverless
 const bot = new Bot(process.env.BOT_TOKEN, {
   botInfo: {
@@ -13,13 +20,12 @@ const bot = new Bot(process.env.BOT_TOKEN, {
   },
 });
 
-// Message handler
+// Message handler (untuk auto-save user/group saat chat)
 bot.on('message', async (ctx) => {
   const chatId = ctx.chat.id;
   
   try {
     if (ctx.chat.type === 'private') {
-      const { addUser } = await import('../lib/kv-store.js');
       await addUser(chatId);
       
       await ctx.reply(
@@ -29,7 +35,6 @@ bot.on('message', async (ctx) => {
         { parse_mode: 'Markdown' }
       );
     } else if (ctx.chat.type === 'group' || ctx.chat.type === 'supergroup') {
-      const { addGroup } = await import('../lib/kv-store.js');
       await addGroup(chatId);
       
       await ctx.reply(
@@ -43,7 +48,27 @@ bot.on('message', async (ctx) => {
   }
 });
 
-// Vercel Serverless Handler
+// 🆕 HANDLER BARU: Command /bidikan
+bot.command('bidikan', async (ctx) => {
+  try {
+    await ctx.reply('⏳ Mengambil data screening...');
+
+    const result = await fetchScreeningData();
+
+    if (!result.success) {
+      await ctx.reply(formatErrorMessage(), { parse_mode: 'Markdown' });
+      return;
+    }
+
+    const message = formatBidikanMessage(result.data);
+    await ctx.reply(message, { parse_mode: 'Markdown' });
+  } catch (error) {
+    console.error('/bidikan error:', error);
+    await ctx.reply(formatErrorMessage(), { parse_mode: 'Markdown' });
+  }
+});
+
+// Vercel Serverless Handler (untuk webhook Telegram)
 export async function POST(req) {
   try {
     const body = await req.json();

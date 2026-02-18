@@ -6,5 +6,11 @@
   },
   "rewrites": [
     { "source": "/admin", "destination": "/admin/index.html" }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron",
+      "schedule": "15 12 * * 0,1,2,3,4,5"
+    }
   ]
 }
