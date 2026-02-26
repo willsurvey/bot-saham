@@ -1,7 +1,7 @@
 import { Bot } from 'grammy';
 import { getUsers, getGroups } from '../lib/kv-store.js';
 import { fetchScreeningData } from '../lib/api-fetcher.js';
-import { formatBidikanMessage, formatErrorMessage } from '../lib/message-mapper.js';
+import { formatBidikanMessages, formatErrorMessage } from '../lib/message-mapper.js';
 
 const bot = new Bot(process.env.BOT_TOKEN);
 
@@ -9,7 +9,6 @@ export async function GET() {
   try {
     console.log('Cron job started');
 
-    // Fetch data dari API
     const result = await fetchScreeningData();
 
     if (!result.success) {
@@ -21,12 +20,10 @@ export async function GET() {
       );
     }
 
-    // Format pesan
-    const message = formatBidikanMessage(result.data);
-    console.log('Message formatted successfully');
+    const messages = formatBidikanMessages(result.data);
+    console.log(`Formatted into ${messages.length} messages`);
 
-    // Kirim ke semua user
-    await sendToAllUsers(message);
+    await sendToAllUsersMultiple(messages);
 
     console.log('Cron job completed successfully');
     return new Response(
@@ -42,26 +39,26 @@ export async function GET() {
   }
 }
 
-// Helper: Kirim pesan ke semua user dan grup
-async function sendToAllUsers(message) {
+async function sendToAllUsersMultiple(messages) {
   const users = await getUsers();
   const groups = await getGroups();
   const allChats = [...users, ...groups];
 
   console.log(`Sending to ${allChats.length} chats`);
 
-  let successCount = 0;
-  let failCount = 0;
-
   for (const chatId of allChats) {
     try {
-      await bot.api.sendMessage(chatId, message, { parse_mode: 'Markdown' });
-      successCount++;
+      for (const message of messages) {
+        await bot.api.sendMessage(chatId, message, { parse_mode: 'Markdown' });
+        await sleep(300);
+      }
+      console.log(`✅ Sent to ${chatId}`);
     } catch (err) {
-      console.error(`Failed to send to ${chatId}:`, err.message);
-      failCount++;
+      console.error(`❌ Failed to send to ${chatId}:`, err.message);
     }
   }
+}
 
-  console.log(`Sent: ${successCount} success, ${failCount} failed`);
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }

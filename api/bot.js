@@ -2,7 +2,7 @@ import { Bot } from 'grammy';
 
 // Import library baru untuk fitur bidikan
 import { fetchScreeningData } from '../lib/api-fetcher.js';
-import { formatBidikanMessage, formatErrorMessage } from '../lib/message-mapper.js';
+import { formatBidikanMessages, formatErrorMessage } from '../lib/message-mapper.js';
 
 // Import untuk user/group registration
 import { addUser, addGroup } from '../lib/kv-store.js';
@@ -20,7 +20,7 @@ const bot = new Bot(process.env.BOT_TOKEN, {
   },
 });
 
-// ✅ HANDLER COMMAND (DULUAN - sebelum message handler)
+// ✅ HANDLER COMMAND /bidikan
 bot.command('bidikan', async (ctx) => {
   try {
     await ctx.reply('⏳ Mengambil data screening...');
@@ -32,8 +32,15 @@ bot.command('bidikan', async (ctx) => {
       return;
     }
 
-    const message = formatBidikanMessage(result.data);
-    await ctx.reply(message, { parse_mode: 'Markdown' });
+    const messages = formatBidikanMessages(result.data);
+    const chatId = ctx.chat.id;
+
+    // Send all messages with delay
+    for (const message of messages) {
+      await ctx.reply(message, { parse_mode: 'Markdown' });
+      await sleep(300);
+    }
+
   } catch (error) {
     console.error('/bidikan error:', error);
     await ctx.reply(formatErrorMessage(), { parse_mode: 'Markdown' });
@@ -95,4 +102,8 @@ export async function GET() {
       headers: { 'Content-Type': 'application/json' }
     }
   );
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
